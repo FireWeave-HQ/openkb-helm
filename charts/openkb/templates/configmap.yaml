@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openkb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openkb.labels" . | nindent 4 }}
+data:
+  # Non-secret settings only. Credentials live in the Secret.
+  OPENKB_KB_ROOT: {{ include "openkb.kbRoot" . | quote }}
+  {{- with .Values.llm.openaiApiBase }}
+  OPENAI_API_BASE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.corsOrigins }}
+  OPENKB_CORS_ORIGINS: {{ . | quote }}
+  {{- end }}
+  {{- if kindIs "int" .Values.config.maxUploadFileBytes }}
+  OPENKB_MAX_UPLOAD_FILE_BYTES: {{ .Values.config.maxUploadFileBytes | quote }}
+  {{- else if kindIs "float64" .Values.config.maxUploadFileBytes }}
+  OPENKB_MAX_UPLOAD_FILE_BYTES: {{ .Values.config.maxUploadFileBytes | int | quote }}
+  {{- end }}
+  {{- if kindIs "int" .Values.config.maxUploadRequestBytes }}
+  OPENKB_MAX_UPLOAD_REQUEST_BYTES: {{ .Values.config.maxUploadRequestBytes | quote }}
+  {{- else if kindIs "float64" .Values.config.maxUploadRequestBytes }}
+  OPENKB_MAX_UPLOAD_REQUEST_BYTES: {{ .Values.config.maxUploadRequestBytes | int | quote }}
+  {{- end }}
+  {{- if kindIs "int" .Values.config.watchSseTimeout }}
+  OPENKB_WATCH_SSE_TIMEOUT: {{ .Values.config.watchSseTimeout | quote }}
+  {{- else if kindIs "float64" .Values.config.watchSseTimeout }}
+  OPENKB_WATCH_SSE_TIMEOUT: {{ .Values.config.watchSseTimeout | quote }}
+  {{- end }}
+  {{- if kindIs "int" .Values.config.watchMaxEvents }}
+  OPENKB_WATCH_MAX_EVENTS: {{ .Values.config.watchMaxEvents | quote }}
+  {{- else if kindIs "float64" .Values.config.watchMaxEvents }}
+  OPENKB_WATCH_MAX_EVENTS: {{ .Values.config.watchMaxEvents | int | quote }}
+  {{- end }}
+  {{- if include "openkb.kbDefaultsEnabled" . }}
+  config.yaml: |
+    {{- if .Values.kbDefaults.model }}
+    model: {{ .Values.kbDefaults.model | quote }}
+    {{- end }}
+    {{- if .Values.kbDefaults.language }}
+    language: {{ .Values.kbDefaults.language | quote }}
+    {{- end }}
+    {{- if or (kindIs "int" .Values.kbDefaults.pageindexThreshold) (kindIs "float64" .Values.kbDefaults.pageindexThreshold) }}
+    pageindex_threshold: {{ .Values.kbDefaults.pageindexThreshold }}
+    {{- end }}
+  {{- end }}

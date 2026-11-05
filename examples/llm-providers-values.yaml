@@ -1,0 +1,32 @@
+# LLM settings that exist in OpenKB 0.5.0rc1.
+#
+# The REST server reads LLM_API_KEY and passes it to LiteLLM on each request
+# (OpenAI, Anthropic, Gemini, DeepSeek, or any other LiteLLM provider).
+# It does not have separate required env vars per provider.
+# OPENAI_API_BASE is the optional OpenAI-compatible base URL.
+# PAGEINDEX_API_KEY turns on PageIndex Cloud. Local PageIndex is the default
+# and does not need that key.
+#
+# The model is not an environment variable. kbDefaults.model is copied into
+# cwd/config.yaml, which REST /init copies into a new knowledge base when the
+# request omits `model`. Use a LiteLLM id: `gpt-5.4` or `anthropic/claude-sonnet-4-6`.
+#
+# Put the keys in the Secret named below. Leave them out of this file.
+#   OPENKB_API_TOKEN
+#   LLM_API_KEY
+#   PAGEINDEX_API_KEY          (optional)
+#   OPENAI_API_BASE            (optional; or set llm.openaiApiBase here)
+auth:
+  existingSecret: openkb-credentials
+
+llm:
+  # Non-secret gateway URL. Empty uses the provider default.
+  # Example for an OpenAI-compatible endpoint (DeepSeek is one upstream example):
+  openaiApiBase: "https://api.deepseek.com"
+  apiKey: ""
+  pageindexApiKey: ""
+
+kbDefaults:
+  model: "deepseek/deepseek-chat"
+  language: "en"
+  # pageindexThreshold: 20

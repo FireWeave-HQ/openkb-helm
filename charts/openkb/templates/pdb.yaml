@@ -1,0 +1,18 @@
+{{- if and .Values.pdb.enabled (gt (int .Values.replicaCount) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openkb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openkb.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "openkb.selectorLabels" . | nindent 6 }}
+  {{- if not (kindIs "invalid" .Values.pdb.maxUnavailable) }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- end }}
+{{- end }}

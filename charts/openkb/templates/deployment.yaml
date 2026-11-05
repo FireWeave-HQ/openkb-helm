@@ -1,0 +1,230 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openkb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openkb.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "openkb.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ include "openkb.strategyType" . }}
+    {{- if eq (include "openkb.strategyType" .) "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.updateStrategy.rollingUpdate.maxSurge }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "openkb.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "openkb.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: openkb
+          image: {{ include "openkb.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          workingDir: /tmp
+          command:
+            - openkb-web
+          args:
+            - --host
+            - {{ .Values.container.host | quote }}
+            - --port
+            - {{ .Values.container.port | quote }}
+            {{- range .Values.container.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port }}
+              protocol: TCP
+          {{- with (include "openkb.secretName" .) }}
+          envFrom:
+            # Optional keys (LLM_API_KEY, PAGEINDEX_API_KEY, OPENAI_API_BASE)
+            # are picked up when the Secret contains them. The token below is
+            # also a secretKeyRef so the Pod fails to start if it is missing.
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          env:
+            # Explicit values win over envFrom, so a Secret cannot move the
+            # knowledge base off the mounted volume or point HOME at a read-only path.
+            # The ConfigMap is not envFrom'd: it also holds config.yaml, and
+            # envFrom would inject that file body as an environment variable.
+            - name: HOME
+              value: {{ include "openkb.home" . | quote }}
+            - name: OPENKB_KB_ROOT
+              value: {{ include "openkb.kbRoot" . | quote }}
+            - name: TMPDIR
+              value: /tmp
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            {{- if .Values.llm.openaiApiBase }}
+            - name: OPENAI_API_BASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENAI_API_BASE
+            {{- end }}
+            {{- if .Values.config.corsOrigins }}
+            - name: OPENKB_CORS_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENKB_CORS_ORIGINS
+            {{- end }}
+            {{- if or (kindIs "int" .Values.config.maxUploadFileBytes) (kindIs "float64" .Values.config.maxUploadFileBytes) }}
+            - name: OPENKB_MAX_UPLOAD_FILE_BYTES
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENKB_MAX_UPLOAD_FILE_BYTES
+            {{- end }}
+            {{- if or (kindIs "int" .Values.config.maxUploadRequestBytes) (kindIs "float64" .Values.config.maxUploadRequestBytes) }}
+            - name: OPENKB_MAX_UPLOAD_REQUEST_BYTES
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENKB_MAX_UPLOAD_REQUEST_BYTES
+            {{- end }}
+            {{- if or (kindIs "int" .Values.config.watchSseTimeout) (kindIs "float64" .Values.config.watchSseTimeout) }}
+            - name: OPENKB_WATCH_SSE_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENKB_WATCH_SSE_TIMEOUT
+            {{- end }}
+            {{- if or (kindIs "int" .Values.config.watchMaxEvents) (kindIs "float64" .Values.config.watchMaxEvents) }}
+            - name: OPENKB_WATCH_MAX_EVENTS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "openkb.fullname" . }}
+                  key: OPENKB_WATCH_MAX_EVENTS
+            {{- end }}
+            {{- if not .Values.auth.allowUnauthenticated }}
+            - name: OPENKB_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openkb.secretName" . }}
+                  key: {{ include "openkb.tokenKey" . }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.probes.startup.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - python
+                  - -c
+                  - import time; time.sleep({{ .Values.preStopSleepSeconds }})
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath | quote }}
+            - name: tmp
+              mountPath: /tmp
+            {{- if include "openkb.kbDefaultsEnabled" . }}
+            - name: kb-defaults
+              mountPath: /tmp/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "openkb.claimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+        {{- if include "openkb.kbDefaultsEnabled" . }}
+        - name: kb-defaults
+          configMap:
+            name: {{ include "openkb.fullname" . }}
+            items:
+              - key: config.yaml
+                path: config.yaml
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

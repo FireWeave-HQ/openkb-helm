@@ -1,0 +1,17 @@
+# Recommended first install.
+# Create the Secret before installing. Do not put real keys in this file.
+#
+#   kubectl create namespace openkb
+#   kubectl -n openkb create secret generic openkb-credentials \
+#     --from-literal=OPENKB_API_TOKEN="$(openssl rand -hex 32)" \
+#     --from-literal=LLM_API_KEY="paste-your-llm-key"
+#
+# Optional keys in the same Secret:
+#   PAGEINDEX_API_KEY
+#   OPENAI_API_BASE
+#
+# auth.token and llm.apiKey also work, but Helm stores values in the release
+# Secret. existingSecret keeps credentials out of the chart and the release.
+auth:
+  existingSecret: openkb-credentials
+  tokenKey: OPENKB_API_TOKEN
