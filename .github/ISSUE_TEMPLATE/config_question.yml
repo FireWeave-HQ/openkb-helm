@@ -1,0 +1,33 @@
+name: Configuration question
+description: Help choosing values, secrets, storage, or an LLM provider
+title: "[question] "
+labels:
+  - question
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to run?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Include redacted values. Do not paste API keys or the OpenKB token.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Authentication
+        - Storage
+        - Ingress and TLS
+        - LLM provider
+        - PageIndex
+        - Upgrades and backups
+        - Something else
+    validations:
+      required: true
