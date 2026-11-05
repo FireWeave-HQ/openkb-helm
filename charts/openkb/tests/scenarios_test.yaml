@@ -1,0 +1,224 @@
+suite: install scenarios
+templates:
+  - deployment.yaml
+  - pvc.yaml
+  - secret.yaml
+  - ingress.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - configmap.yaml
+release:
+  name: openkb
+  namespace: openkb
+tests:
+  - it: custom persistence keeps a stable claim name
+    set:
+      persistence.size: 50Gi
+      persistence.storageClass: fast-ssd
+      persistence.accessModes[0]: ReadWriteOnce
+      auth.token: replace-me
+    template: pvc.yaml
+    asserts:
+      - equal:
+          path: spec.resources.requests.storage
+          value: 50Gi
+      - equal:
+          path: spec.storageClassName
+          value: fast-ssd
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+      - equal:
+          path: metadata.name
+          value: openkb-data
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+
+  - it: uses ReadWriteMany with rolling updates when asked
+    set:
+      persistence.accessModes[0]: ReadWriteMany
+      auth.token: replace-me
+    template: deployment.yaml
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+
+  - it: mounts an existing claim and does not render a PVC
+    set:
+      persistence.existingClaim: team-openkb-data
+      auth.token: replace-me
+    template: deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: team-openkb-data
+
+  - it: renders no PVC when an existing claim is set
+    set:
+      persistence.existingClaim: team-openkb-data
+      auth.token: replace-me
+    template: pvc.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: wires an existing secret and does not render one
+    set:
+      auth.existingSecret: my-openkb
+      auth.tokenKey: OPENKB_API_TOKEN
+    template: deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: my-openkb
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENKB_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: my-openkb
+                key: OPENKB_API_TOKEN
+
+  - it: does not render a chart secret when existingSecret is set
+    set:
+      auth.existingSecret: my-openkb
+      llm.apiKey: should-not-be-rendered
+    template: secret.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders ingress tls
+    values:
+      - ../../../examples/ingress-tls-values.yaml
+    template: ingress.yaml
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.rules[0].host
+          value: kb.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: openkb-tls
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: openkb
+
+  - it: uses a custom image repository and tag
+    set:
+      image.repository: ghcr.io/example/openkb
+      image.tag: "9.9.9"
+      auth.token: replace-me
+    template: deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/example/openkb:9.9.9
+
+  - it: keeps authentication on by default
+    template: secret.yaml
+    asserts:
+      - isNotEmpty:
+          path: data.OPENKB_API_TOKEN
+      - notExists:
+          path: stringData
+
+  - it: does not enable unauthenticated mode unless asked
+    set:
+      auth.allowUnauthenticated: true
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENKB_API_TOKEN
+
+  - it: renders no secret in unauthenticated mode without llm keys
+    set:
+      auth.allowUnauthenticated: true
+    template: secret.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: puts llm keys in the secret and not the configmap
+    set:
+      auth.token: replace-me
+      llm.apiKey: test-llm-key
+      llm.pageindexApiKey: test-pageindex-key
+      llm.openaiApiBase: https://llm.example.com/v1
+    template: secret.yaml
+    asserts:
+      - isNotEmpty:
+          path: data.LLM_API_KEY
+      - isNotEmpty:
+          path: data.PAGEINDEX_API_KEY
+      - notExists:
+          path: data.OPENAI_API_BASE
+
+  - it: puts the openai base url in the configmap
+    set:
+      auth.token: replace-me
+      llm.openaiApiBase: https://llm.example.com/v1
+    template: configmap.yaml
+    asserts:
+      - equal:
+          path: data.OPENAI_API_BASE
+          value: https://llm.example.com/v1
+      - notExists:
+          path: data.LLM_API_KEY
+      - notExists:
+          path: data.PAGEINDEX_API_KEY
+
+  - it: skips the PDB when there is a single replica
+    set:
+      pdb.enabled: true
+      replicaCount: 1
+      auth.token: replace-me
+    template: pdb.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders a PDB only when replicas are greater than one
+    set:
+      pdb.enabled: true
+      replicaCount: 2
+      persistence.accessModes[0]: ReadWriteMany
+      auth.token: replace-me
+    template: pdb.yaml
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: 1
+
+  - it: renders the documented network policy when enabled
+    set:
+      networkPolicy.enabled: true
+      auth.token: replace-me
+    template: networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 7566
+      - equal:
+          path: spec.egress[1].ports[0].port
+          value: 443

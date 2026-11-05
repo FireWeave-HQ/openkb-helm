@@ -1,0 +1,253 @@
+# Default values for the community OpenKB chart.
+# Every key below is read by the templates. Secrets never belong in a ConfigMap.
+
+# One replica. The knowledge base is a local directory on a ReadWriteOnce volume.
+# A second replica cannot mount that volume. ReadWriteMany is required before
+# raising this, and even then the in-process file watcher is not coordinated.
+replicaCount: 1
+
+revisionHistoryLimit: 10
+
+image:
+  # No official OpenKB image is published. Build docker/Dockerfile and push it,
+  # then set repository (and tag or digest) to that copy.
+  # `openkb:0.5.0rc1` matches a locally tagged build of this chart's Dockerfile.
+  repository: openkb
+  # Empty uses Chart.appVersion (the upstream PyPI version).
+  tag: ""
+  # Optional image digest (sha256:...). When set, tag is ignored.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # OpenKB does not call the Kubernetes API.
+  automount: false
+  annotations: {}
+  # Used when create is false. Empty selects the default ServiceAccount.
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# openkb-web defaults to 127.0.0.1:7566. The chart binds 0.0.0.0 so the Service
+# can reach the container. Do not change the port unless you also change the
+# container args; it must match the process OpenKB actually listens on.
+container:
+  host: "0.0.0.0"
+  port: 7566
+  extraArgs: []
+
+service:
+  type: ClusterIP
+  port: 7566
+  # Set when type is NodePort and you need a fixed port. Otherwise leave null.
+  nodePort: null
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Example nginx annotation (not applied unless you set it):
+  #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  # Query, chat, and add streams are long-lived SSE responses.
+  hosts:
+    - host: openkb.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: openkb-tls
+  #   hosts:
+  #     - openkb.example.com
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+# Knowledge-base files and ~/.config/openkb live on this volume.
+# HOME is <mountPath>/<homeSubPath>. OPENKB_KB_ROOT is <mountPath>/<kbSubPath>.
+# OpenKB resolves the global config directory as Path.home()/.config/openkb.
+# It does not honor XDG_CONFIG_HOME.
+persistence:
+  enabled: true
+  # When set, no PVC is rendered and the Pod uses this claim. The claim name
+  # stays stable across upgrades either way: chart-managed claims are
+  # <fullname>-data and are kept on uninstall.
+  existingClaim: ""
+  size: 10Gi
+  # Empty selects the cluster default StorageClass. "-" pins storageClassName: "".
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  mountPath: /var/lib/openkb
+  kbSubPath: kbs
+  homeSubPath: home
+  annotations: {}
+  # Bind to an existing PV (for example after a restore). Empty omits the field.
+  volumeName: ""
+
+# Empty type: Recreate when persistence is enabled and an access mode is
+# ReadWriteOnce (two Pods cannot mount it during a rolling update). Otherwise
+# RollingUpdate. Set type to Recreate or RollingUpdate to override.
+updateStrategy:
+  type: ""
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+# A PodDisruptionBudget with minAvailable 1 and a single replica blocks
+# voluntary eviction, so the object is rendered only when enabled AND
+# replicaCount > 1.
+pdb:
+  enabled: false
+  minAvailable: 1
+  # When set (for example 1), it is used instead of minAvailable.
+  maxUnavailable: null
+
+# Disabled by default. The policy below allows ingress to the app port and
+# egress to DNS plus TCP 443. It does not allow other ports, so an
+# OpenAI-compatible endpoint on plain HTTP or a non-443 port will fail until
+# you add extraEgress. Leaving this off avoids a default-deny first install.
+networkPolicy:
+  enabled: false
+  # Optional peer restriction. Empty allows ingress from anywhere that can
+  # route to the Pod (still only on the app port).
+  ingress:
+    from: []
+    # - namespaceSelector:
+    #     matchLabels:
+    #       kubernetes.io/metadata.name: ingress-nginx
+  extraEgress: []
+  # - ports:
+  #     - protocol: TCP
+  #       port: 11434
+
+# Authentication is on unless allowUnauthenticated is true.
+# Upstream treats a missing OPENKB_API_TOKEN as "no authentication".
+# This chart refuses that default.
+#
+# Production: create a Secret yourself and set existingSecret. The chart then
+# does not render a Secret. Required key (unless you renamed tokenKey):
+#   OPENKB_API_TOKEN
+# Optional keys, injected only if present (envFrom):
+#   LLM_API_KEY
+#   PAGEINDEX_API_KEY
+#   OPENAI_API_BASE
+#
+# If existingSecret is empty, the chart creates a Secret:
+#   - OPENKB_API_TOKEN from auth.token, or from the live Secret if one already
+#     exists (Helm lookup), or a new random token.
+#   - LLM_API_KEY / PAGEINDEX_API_KEY only when those values are non-empty.
+# auth.token and llm.* values are stored in the Helm release Secret as well as
+# the application Secret. Prefer existingSecret.
+auth:
+  existingSecret: ""
+  tokenKey: OPENKB_API_TOKEN
+  token: ""
+  allowUnauthenticated: false
+
+# Only variables read by the OpenKB server. The model is NOT an env var.
+# LiteLLM providers (OpenAI, Anthropic, Gemini, DeepSeek, and any other
+# provider LiteLLM supports) all use LLM_API_KEY. The REST server passes that
+# key on each request. OPENAI_API_BASE is the optional OpenAI-compatible
+# gateway URL. PAGEINDEX_API_KEY enables PageIndex Cloud features.
+llm:
+  apiKey: ""
+  openaiApiBase: ""
+  pageindexApiKey: ""
+
+# Optional server tunables. null or "" keeps the upstream default.
+# Defaults in source: upload file 100MiB, upload request 500MiB,
+# watch SSE timeout 300 seconds, watch event buffer 200.
+# CORS: empty uses the upstream localhost list (7566 and the Vite dev port 5173).
+config:
+  corsOrigins: ""
+  maxUploadFileBytes: null
+  maxUploadRequestBytes: null
+  watchSseTimeout: null
+  watchMaxEvents: null
+
+# Copied to the process working directory as config.yaml when any field is set.
+# `openkb` init (REST /init) copies that file into a new knowledge base when
+# the request does not pass a model. Empty fields are omitted.
+# Upstream DEFAULT_CONFIG, used when this is unset: model gpt-5.4, language en,
+# pageindex_threshold 20. Model strings are LiteLLM ids (`anthropic/claude-sonnet-4-6`,
+# or `gpt-5.4` without a provider prefix).
+kbDefaults:
+  model: ""
+  language: ""
+  pageindexThreshold: null
+
+# Extra environment entries. Use valueFrom for anything secret.
+# Example:
+#   - name: NO_COLOR
+#     value: "1"
+extraEnv: []
+
+extraVolumes: []
+extraVolumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# LLM and compile requests can run for a long time. preStop sleeps so the
+# endpoints drop before the process is killed.
+terminationGracePeriodSeconds: 120
+preStopSleepSeconds: 10
+
+# There is no /health or /ready route. /openapi.json is a real FastAPI route,
+# returns 200 when the process is serving, and is not gated by OPENKB_API_TOKEN
+# (the bearer dependency is per API route, not middleware).
+probes:
+  startup:
+    enabled: true
+    path: /openapi.json
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 36
+  readiness:
+    enabled: true
+    path: /openapi.json
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    enabled: true
+    path: /openapi.json
+    initialDelaySeconds: 0
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3

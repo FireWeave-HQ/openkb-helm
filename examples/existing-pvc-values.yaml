@@ -1,0 +1,11 @@
+# Reuse a claim created earlier (or restored from a snapshot).
+# The chart does not render a PVC and does not set resource-policy on a claim
+# it does not own. You delete this claim yourself when you want the data gone.
+auth:
+  existingSecret: openkb-credentials
+
+persistence:
+  enabled: true
+  existingClaim: team-openkb-data
+  # size, storageClass, and accessModes are ignored when existingClaim is set.
+  # The Pod still mounts the claim at persistence.mountPath (/var/lib/openkb).

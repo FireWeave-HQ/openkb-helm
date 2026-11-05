@@ -1,0 +1,33 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openkb.claimName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openkb.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    # helm uninstall leaves this claim in place. Delete it explicitly to drop data.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    {{- range .Values.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+  {{- if .Values.persistence.storageClass }}
+  {{- if eq .Values.persistence.storageClass "-" }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+  {{- with .Values.persistence.volumeName }}
+  volumeName: {{ . | quote }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+# Optional network policy. Off by default in values.yaml.
+# Allows ingress only to the OpenKB port, plus egress to DNS and TCP 443
+# (LLM APIs and PageIndex Cloud). Add extraEgress for any other port.
+# This is not a full default-deny of the cluster; it only selects OpenKB Pods.
+auth:
+  existingSecret: openkb-credentials
+
+networkPolicy:
+  enabled: true
+  ingress:
+    from: []
+  extraEgress: []

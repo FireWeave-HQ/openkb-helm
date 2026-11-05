@@ -1,0 +1,33 @@
+apiVersion: v2
+name: openkb
+description: Community Helm chart for the OpenKB REST API and Knowledge Workbench
+type: application
+version: 0.1.0
+# PyPI version of the upstream release this chart deploys. Git tag is v0.5.0-rc1.
+# The latest stable tag v0.4.5 is CLI-only and does not include the server.
+appVersion: "0.5.0rc1"
+# As of November 2026, upstream Kubernetes supports 1.35, 1.36, and 1.37
+# (1.34 reached end of life on 2026-10-27). This chart only uses GA APIs
+# (apps/v1, networking.k8s.io/v1, policy/v1, core v1) that have been stable
+# since well before 1.28. The floor stays at 1.28 so a Helm binary whose
+# embedded client version is older than 1.35 can still render the chart.
+# Run it on a supported cluster when you can.
+kubeVersion: ">=1.28.0-0"
+home: https://github.com/VectifyAI/OpenKB
+sources:
+  - https://github.com/VectifyAI/OpenKB
+keywords:
+  - openkb
+  - knowledge-base
+  - pageindex
+  - llm
+maintainers: []
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/prerelease: "false"
+  # Community packaging. Not published or endorsed by Vectify AI.
+  artifacthub.io/links: |
+    - name: Upstream OpenKB
+      url: https://github.com/VectifyAI/OpenKB
+    - name: Upstream license
+      url: https://github.com/VectifyAI/OpenKB/blob/v0.5.0-rc1/LICENSE
