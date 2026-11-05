@@ -1,0 +1,3 @@
+# chart-releaser config. Release tags are v<chart version>, for example v0.1.0.
+pages-branch: gh-pages
+release-name-template: "v{{ .Version }}"
