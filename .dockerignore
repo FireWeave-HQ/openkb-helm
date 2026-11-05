@@ -1,0 +1,9 @@
+.git
+.github
+.cache
+**/*.md
+charts
+examples
+docs
+scripts
+*.tgz
