@@ -13,7 +13,13 @@ ARG OPENKB_VERSION=0.5.0rc1
 # The openkb package itself leaves the web extra unpinned.
 ARG FASTAPI_VERSION=0.139.0
 ARG UVICORN_VERSION=0.47.0
-ARG PYTHON_MULTIPART_VERSION=0.0.29
+ARG PYTHON_MULTIPART_VERSION=0.0.30
+# openkb 0.5.0rc1 pins json-repair==0.59.10 and litellm==1.87.2. Both are
+# fixable HIGH findings. litellm 1.95.0 is still HIGH (GHSA-7hp6-4w63-5g45,
+# fixed in 1.100.4), so the override is the first release that clears both.
+# A single resolver solve cannot select openkb and these releases together.
+ARG JSON_REPAIR_VERSION=0.60.1
+ARG LITELLM_VERSION=1.100.4
 
 LABEL org.opencontainers.image.title="openkb" \
       org.opencontainers.image.description="Community image for the OpenKB REST API and Knowledge Workbench" \
@@ -35,7 +41,13 @@ RUN apt-get update \
         "openkb[web]==${OPENKB_VERSION}" \
         "fastapi==${FASTAPI_VERSION}" \
         "uvicorn==${UVICORN_VERSION}" \
-        "python-multipart==${PYTHON_MULTIPART_VERSION}"
+        "python-multipart==${PYTHON_MULTIPART_VERSION}" \
+    && pip uninstall -y openkb \
+    && pip install \
+        "json-repair==${JSON_REPAIR_VERSION}" \
+        "litellm==${LITELLM_VERSION}" \
+    && pip install --no-deps "openkb==${OPENKB_VERSION}" \
+    && python -c "import json_repair, litellm, openkb.cli"
 
 USER 1000:1000
 WORKDIR /tmp
