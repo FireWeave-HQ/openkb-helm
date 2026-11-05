@@ -1,0 +1,47 @@
+name: Release
+
+# Tag the repository vX.Y.Z where X.Y.Z is charts/openkb/Chart.yaml version.
+# Example: chart version 0.1.0 is released by pushing the git tag v0.1.0.
+# This workflow does not publish the container image.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  chart:
+    name: Publish chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.0.4
+
+      - name: Require the tag to match the chart version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(awk '/^version:/{print $2; exit}' charts/openkb/Chart.yaml)"
+          if [[ "${tag}" != "${version}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match Chart.yaml version ${version}."
+            echo "Push a tag v${version} after setting version: ${version}."
+            exit 1
+          fi
+
+      - name: Publish to GitHub Pages
+        uses: helm/chart-releaser-action@v1.9.0
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          charts_dir: charts
+          config: cr.yaml
+          skip_existing: true
