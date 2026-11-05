@@ -1,0 +1,14 @@
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.tgz
+dist/
+tmp/
+.cache/
+.cr-release-packages/
+.cr-index/
+*.log
+.env
+.env.*
+!.env.example

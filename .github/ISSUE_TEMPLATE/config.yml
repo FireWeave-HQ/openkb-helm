@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream OpenKB issues
+    url: https://github.com/VectifyAI/OpenKB/issues
+    about: Bugs in the OpenKB application itself belong in the upstream repository. This repo is the community chart.

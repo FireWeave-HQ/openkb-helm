@@ -1,0 +1,39 @@
+name: Bug report
+description: A problem with the chart, image, or install docs
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what the chart or Pod did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Chart version, appVersion, Kubernetes version, Helm version.
+      placeholder: |
+        chart 0.1.0
+        appVersion 0.5.0rc1
+        kubectl version
+        helm version
+    validations:
+      required: true
+  - type: textarea
+    id: values
+    attributes:
+      label: Values
+      description: Paste the values you used. Remove tokens and API keys first.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Pod logs or render output
+      description: Relevant `kubectl logs` or `helm template` output. Redact secrets.
+    validations:
+      required: false

@@ -1,0 +1,18 @@
+OpenKB Helm
+Copyright 2026 The OpenKB Helm Contributors
+
+This repository contains a community Helm chart, container packaging, and
+documentation for deploying OpenKB. It is not a Vectify AI project and is
+not endorsed by Vectify AI.
+
+OpenKB
+Copyright 2026 Vectify AI
+https://github.com/VectifyAI/OpenKB
+
+OpenKB is licensed under the Apache License, Version 2.0. This chart does
+not relicense it. The container image installs the upstream Python package
+from PyPI (the `web` extra). Upstream source is not vendored in this
+repository.
+
+The chart, the Dockerfile, and the documentation written for this repository
+are licensed under the Apache License, Version 2.0. See LICENSE.
