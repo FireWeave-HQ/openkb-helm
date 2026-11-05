@@ -1,0 +1,162 @@
+suite: default installation
+release:
+  name: openkb
+  namespace: openkb
+tests:
+  - it: renders one authenticated server and recreates on upgrade
+    template: deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - isNull:
+          path: spec.strategy.rollingUpdate
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: openkb:0.5.0rc1
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: openkb-web
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: "0.0.0.0"
+      - equal:
+          path: spec.template.spec.containers[0].args[3]
+          value: "7566"
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 7566
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /openapi.json
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /openapi.json
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /openapi.json
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop[0]
+          value: ALL
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENKB_KB_ROOT
+            value: /var/lib/openkb/kbs
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENKB_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: openkb
+                key: OPENKB_API_TOKEN
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: openkb-data
+
+  - it: exposes a ClusterIP service on the app port
+    template: service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 7566
+      - equal:
+          path: spec.ports[0].targetPort
+          value: http
+
+  - it: keeps a stable PVC across uninstall
+    template: pvc.yaml
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+      - equal:
+          path: metadata.name
+          value: openkb-data
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - equal:
+          path: spec.resources.requests.storage
+          value: 10Gi
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+
+  - it: creates an API token secret and no llm key
+    template: secret.yaml
+    asserts:
+      - isKind:
+          of: Secret
+      - isNotEmpty:
+          path: data.OPENKB_API_TOKEN
+      - notExists:
+          path: data.LLM_API_KEY
+      - notExists:
+          path: data.PAGEINDEX_API_KEY
+
+  - it: does not put credentials in the configmap
+    template: configmap.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: data.OPENKB_KB_ROOT
+          value: /var/lib/openkb/kbs
+      - notExists:
+          path: data.LLM_API_KEY
+      - notExists:
+          path: data.OPENKB_API_TOKEN
+      - notExists:
+          path: data.PAGEINDEX_API_KEY
+
+  - it: creates a service account without a token mount
+    template: serviceaccount.yaml
+    asserts:
+      - isKind:
+          of: ServiceAccount
+      - equal:
+          path: automountServiceAccountToken
+          value: false
+
+  - it: does not render ingress by default
+    template: ingress.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: does not render a pdb by default
+    template: pdb.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: does not render a network policy by default
+    template: networkpolicy.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
