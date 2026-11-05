@@ -1,0 +1,63 @@
+OpenKB is starting in namespace {{ .Release.Namespace }}.
+
+The Knowledge Workbench and REST API listen on port {{ .Values.container.port }}.
+Upstream does not expose /health or /ready. Probes use {{ .Values.probes.readiness.path }}, which FastAPI serves without the bearer token.
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "openkb.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Workbench: http://${NODE_IP}:${NODE_PORT}/"
+{{- else if contains "LoadBalancer" .Values.service.type }}
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "openkb.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "Workbench: http://${SERVICE_IP}:{{ .Values.service.port }}/"
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "openkb.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  Workbench: http://127.0.0.1:{{ .Values.service.port }}/
+{{- end }}
+
+{{- if .Values.auth.allowUnauthenticated }}
+
+WARNING: auth.allowUnauthenticated is true. OPENKB_API_TOKEN is not set.
+Upstream then serves the API with no authentication. Do not expose this Service.
+{{- else }}
+
+Authentication is enabled. The bearer token is not printed here.
+{{- if .Values.auth.existingSecret }}
+It is key {{ .Values.auth.tokenKey }} in Secret {{ .Values.auth.existingSecret }}.
+{{- else }}
+It is key OPENKB_API_TOKEN in Secret {{ include "openkb.fullname" . }}.
+{{- if not .Values.auth.token }}
+Helm generated that token and will reuse it on upgrade only when the upgrade can read the cluster (`lookup`). `helm template` and `helm upgrade --dry-run=client` mint a new value every time. Do not apply that output over this release. For a stable token, set auth.existingSecret or auth.token.
+{{- end }}
+{{- end }}
+
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "openkb.secretName" . }} -o jsonpath='{.data.{{ include "openkb.tokenKey" . }}}' | base64 -d && echo
+
+Send it as `Authorization: Bearer <token>`. The Workbench asks for it once and stores it in the browser.
+{{- end }}
+
+Knowledge bases are stored at {{ include "openkb.kbRoot" . }} on volume {{ include "openkb.claimName" . }}.
+{{- if not .Values.persistence.enabled }}
+persistence.enabled is false, so that path is an emptyDir and knowledge bases are deleted when the Pod is deleted.
+{{- else if .Values.persistence.existingClaim }}
+The chart uses existing claim {{ .Values.persistence.existingClaim }} and will not delete it.
+{{- else }}
+The PVC is named {{ include "openkb.claimName" . }} and is annotated helm.sh/resource-policy: keep.
+`helm uninstall` does not delete it. To delete the knowledge base data:
+
+  kubectl delete pvc -n {{ .Release.Namespace }} {{ include "openkb.claimName" . }}
+{{- end }}
+
+{{- if and (gt (int .Values.replicaCount) 1) .Values.persistence.enabled (has "ReadWriteOnce" .Values.persistence.accessModes) }}
+
+WARNING: replicaCount is {{ .Values.replicaCount }} and the volume is ReadWriteOnce.
+Only one Pod can mount it. Keep replicaCount at 1, or switch to ReadWriteMany and set updateStrategy.type to RollingUpdate.
+{{- end }}
+
+LLM calls use LLM_API_KEY (any LiteLLM provider). PageIndex Cloud uses PAGEINDEX_API_KEY. Put those in the credentials Secret, not in this chart's ConfigMap. The model is not an environment variable; set kbDefaults.model or change it in the Workbench.
