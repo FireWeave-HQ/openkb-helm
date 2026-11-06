@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenKB Helm Chart – Deploy OpenKB on Kubernetes</title>
+<meta name="description" content="Community Helm chart for OpenKB (Open LLM Knowledge Base by VectifyAI). Deploy the OpenKB REST API and Knowledge Workbench on Kubernetes with persistent storage and token auth.">
+<meta name="keywords" content="OpenKB, OpenKB Helm chart, OpenKB Kubernetes, OpenKB Docker image, VectifyAI, PageIndex, LLM knowledge base, Helm, Kubernetes, RAG">
+<link rel="canonical" href="https://fireweave-hq.github.io/openkb-helm/">
+<link rel="icon" type="image/png" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpenKB Helm Chart">
+<meta property="og:description" content="Deploy the OpenKB REST API and Knowledge Workbench on Kubernetes.">
+<meta property="og:url" content="https://fireweave-hq.github.io/openkb-helm/">
+<meta property="og:image" content="https://fireweave-hq.github.io/openkb-helm/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "OpenKB Helm Chart",
+  "description": "Community Helm chart for deploying OpenKB, the Open LLM Knowledge Base by VectifyAI, on Kubernetes.",
+  "codeRepository": "https://github.com/FireWeave-HQ/openkb-helm",
+  "url": "https://fireweave-hq.github.io/openkb-helm/",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "programmingLanguage": "Helm",
+  "runtimePlatform": "Kubernetes",
+  "keywords": "OpenKB, Helm chart, Kubernetes, LLM, knowledge base, PageIndex",
+  "author": { "@type": "Organization", "name": "FireWeave-HQ", "url": "https://github.com/FireWeave-HQ" }
+}
+</script>
+<style>
+  :root { color-scheme: light dark; --accent: #1d3a8a; }
+  body { font: 17px/1.6 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 760px; margin: 0 auto; padding: 48px 24px; }
+  header { display: flex; align-items: center; gap: 20px; }
+  header img { width: 72px; height: 72px; border-radius: 14px; }
+  h1 { margin: 0; font-size: 2.2rem; }
+  pre { background: #0f1b3d; color: #e8efff; padding: 16px 20px; border-radius: 10px; overflow-x: auto; font-size: 15px; }
+  a { color: #3b6fe0; }
+  .note { border-left: 4px solid #8fb4ff; padding: 4px 16px; margin: 24px 0; }
+  footer { margin-top: 48px; font-size: 14px; opacity: .75; }
+</style>
+</head>
+<body>
+<header>
+  <img src="icon.png" alt="OpenKB Helm chart icon">
+  <div>
+    <h1>OpenKB Helm Chart</h1>
+    <div>Deploy OpenKB on Kubernetes</div>
+  </div>
+</header>
+
+<p>This is a community Helm chart for <a href="https://github.com/VectifyAI/OpenKB">OpenKB</a>, the Open LLM Knowledge Base by VectifyAI. It deploys the OpenKB REST API and the Knowledge Workbench web UI. Knowledge bases live on a PersistentVolumeClaim, LLM keys live in a Kubernetes Secret, and bearer-token authentication is on by default.</p>
+
+<h2>Install</h2>
+<pre><code>helm repo add openkb https://fireweave-hq.github.io/openkb-helm
+helm repo update
+helm install openkb openkb/openkb --namespace openkb --create-namespace</code></pre>
+
+<p>Upstream does not publish a container image. Build the included <a href="https://github.com/FireWeave-HQ/openkb-helm/blob/main/docker/Dockerfile">Dockerfile</a>, push it to your registry, and set <code>image.repository</code>. The full guide is in the <a href="https://github.com/FireWeave-HQ/openkb-helm#readme">README</a>.</p>
+
+<h2>Links</h2>
+<ul>
+  <li><a href="https://github.com/FireWeave-HQ/openkb-helm">Source, docs, and examples on GitHub</a></li>
+  <li><a href="https://github.com/FireWeave-HQ/openkb-helm/releases">Chart releases</a></li>
+  <li><a href="index.yaml">Helm repository index (index.yaml)</a></li>
+  <li><a href="https://github.com/FireWeave-HQ/openkb-helm/issues">Report a chart issue</a></li>
+  <li><a href="https://github.com/VectifyAI/OpenKB">Upstream OpenKB</a></li>
+</ul>
+
+<p class="note">This is a community chart. It is not an official OpenKB project, and Vectify AI has not endorsed it. It is also unrelated to mrvautin/openKB, the Node.js FAQ app.</p>
+
+<footer>Apache-2.0 · Maintained by <a href="https://github.com/FireWeave-HQ">FireWeave-HQ</a></footer>
+</body>
+</html>
