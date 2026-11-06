@@ -1,6 +1,6 @@
 apiVersion: v2
 name: openkb
-description: Community Helm chart for the OpenKB REST API and Knowledge Workbench
+description: Community Helm chart for OpenKB (Open LLM Knowledge Base by VectifyAI). Deploys the OpenKB REST API and Knowledge Workbench on Kubernetes.
 type: application
 version: 0.1.0
 # PyPI version of the upstream release this chart deploys. Git tag is v0.5.0-rc1.
@@ -13,21 +13,46 @@ appVersion: "0.5.0rc1"
 # embedded client version is older than 1.35 can still render the chart.
 # Run it on a supported cluster when you can.
 kubeVersion: ">=1.28.0-0"
-home: https://github.com/VectifyAI/OpenKB
+home: https://github.com/FireWeave-HQ/openkb-helm
+icon: https://raw.githubusercontent.com/FireWeave-HQ/openkb-helm/main/.github/assets/icon.png
 sources:
+  - https://github.com/FireWeave-HQ/openkb-helm
   - https://github.com/VectifyAI/OpenKB
 keywords:
   - openkb
+  - vectifyai
   - knowledge-base
-  - pageindex
+  - knowledge-workbench
   - llm
-maintainers: []
+  - rag
+  - retrieval
+  - pageindex
+  - litellm
+  - ai
+  - agents
+  - fastapi
+  - self-hosted
+maintainers:
+  - name: FireWeave-HQ
+    url: https://github.com/FireWeave-HQ
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/prerelease: "false"
+  artifacthub.io/category: ai-machine-learning
   # Community packaging. Not published or endorsed by Vectify AI.
   artifacthub.io/links: |
+    - name: Chart source
+      url: https://github.com/FireWeave-HQ/openkb-helm
+    - name: Chart repository
+      url: https://fireweave-hq.github.io/openkb-helm
     - name: Upstream OpenKB
       url: https://github.com/VectifyAI/OpenKB
     - name: Upstream license
       url: https://github.com/VectifyAI/OpenKB/blob/v0.5.0-rc1/LICENSE
+    - name: Report a chart issue
+      url: https://github.com/FireWeave-HQ/openkb-helm/issues
+  artifacthub.io/changes: |
+    - kind: added
+      description: First community release. Deploys OpenKB 0.5.0rc1 (REST API and Knowledge Workbench).
+    - kind: security
+      description: Bearer-token authentication on by default; non-root, read-only root filesystem.

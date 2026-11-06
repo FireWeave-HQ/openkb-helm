@@ -1,17 +1,28 @@
-# openkb
+# OpenKB Helm Chart
 
-Community Helm chart for the OpenKB REST API and Knowledge Workbench.
+Community Helm chart for deploying [OpenKB](https://github.com/VectifyAI/OpenKB) (Open LLM Knowledge Base by VectifyAI) on Kubernetes. It runs the OpenKB REST API and Knowledge Workbench, with knowledge bases on a PersistentVolumeClaim and bearer-token authentication on by default.
 
-Not an official Vectify AI chart. Upstream application: <https://github.com/VectifyAI/OpenKB> `0.5.0rc1`.
+Not an official Vectify AI chart. Upstream application: <https://github.com/VectifyAI/OpenKB> `0.5.0rc1`. Chart source, docs, and examples: <https://github.com/FireWeave-HQ/openkb-helm>.
 
 ```bash
-helm upgrade --install openkb . \
+helm repo add openkb https://fireweave-hq.github.io/openkb-helm
+helm repo update
+helm upgrade --install openkb openkb/openkb \
   --namespace openkb \
   --create-namespace \
-  -f ../../examples/minimal-values.yaml
+  -f values.yaml
 ```
 
-The Pod image defaults to `openkb:0.5.0rc1`. Build `docker/Dockerfile` in the parent repository, or set `image.repository`.
+From a checkout of the repository:
+
+```bash
+helm upgrade --install openkb ./charts/openkb \
+  --namespace openkb \
+  --create-namespace \
+  -f examples/minimal-values.yaml
+```
+
+The Pod image defaults to `openkb:0.5.0rc1`, which is not published anywhere. Build [docker/Dockerfile](https://github.com/FireWeave-HQ/openkb-helm/blob/main/docker/Dockerfile) and set `image.repository` to your registry. Create the credentials Secret first, as described in the [repository README](https://github.com/FireWeave-HQ/openkb-helm#install-from-a-checkout).
 
 ## Values
 

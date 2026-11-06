@@ -1,10 +1,27 @@
-# openkb-helm
+# OpenKB Helm Chart
 
-Community Helm chart and container image for [OpenKB](https://github.com/VectifyAI/OpenKB).
+[![CI](https://github.com/FireWeave-HQ/openkb-helm/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/FireWeave-HQ/openkb-helm/actions/workflows/ci.yaml)
+[![Release](https://img.shields.io/github/v/release/FireWeave-HQ/openkb-helm?label=chart)](https://github.com/FireWeave-HQ/openkb-helm/releases)
+[![OpenKB](https://img.shields.io/badge/OpenKB-0.5.0rc1-1d3a8a)](https://github.com/VectifyAI/OpenKB/releases/tag/v0.5.0-rc1)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D1.28-326ce5?logo=kubernetes&logoColor=white)](#prerequisites)
+[![License](https://img.shields.io/github/license/FireWeave-HQ/openkb-helm)](LICENSE)
 
-This repository deploys the OpenKB REST API and the bundled Knowledge Workbench. It is maintained separately from Vectify AI. It is not an official OpenKB project, and Vectify AI has not endorsed it.
+**Helm chart for deploying [OpenKB](https://github.com/VectifyAI/OpenKB) (Open LLM Knowledge Base by VectifyAI) on Kubernetes.** It runs the OpenKB REST API and the bundled Knowledge Workbench web UI, stores knowledge bases on a PersistentVolumeClaim, keeps LLM API keys in a Kubernetes Secret, and turns on bearer-token authentication by default. A Dockerfile for an OpenKB container image is included, because upstream does not publish one.
 
-The chart installs the upstream Python package. It does not fork the application.
+```bash
+helm repo add openkb https://fireweave-hq.github.io/openkb-helm
+helm repo update
+helm install openkb openkb/openkb --namespace openkb --create-namespace \
+  --set image.repository=<your-registry>/openkb --set image.tag=0.5.0rc1
+```
+
+There is no public OpenKB image yet, so build [docker/Dockerfile](docker/Dockerfile) and push it first ([docs/image.md](docs/image.md)). The full walkthrough, including the credentials Secret, is under [Install](#install-from-the-chart-repository).
+
+This is a community chart. It is maintained separately from Vectify AI, it is not an official OpenKB project, and Vectify AI has not endorsed it. The chart installs the upstream Python package and does not fork the application.
+
+> Looking for a different OpenKB? This chart is for [VectifyAI/OpenKB](https://github.com/VectifyAI/OpenKB), the LLM knowledge base built on PageIndex. It is unrelated to [mrvautin/openKB](https://github.com/mrvautin/openKB), the Node.js FAQ app.
+
+**Contents:** [What you get](#what-you-get) · [Prerequisites](#prerequisites) · [Install](#install-from-the-chart-repository) · [Configuration](#configuration) · [Upgrade](#upgrade) · [Backup](#backup-and-restore) · [Security](#security) · [Image](#image) · [FAQ](#faq)
 
 ## What you get
 
@@ -56,18 +73,25 @@ Details and file references: [docs/architecture.md](docs/architecture.md).
 
 ## Install from the chart repository
 
-After the first GitHub release, with GitHub Pages enabled from the `gh-pages` branch:
+The chart repository is served from GitHub Pages at <https://fireweave-hq.github.io/openkb-helm>. Each `vX.Y.Z` tag publishes a chart package to [GitHub Releases](https://github.com/FireWeave-HQ/openkb-helm/releases) and updates `index.yaml` there.
 
 ```bash
-helm repo add openkb https://<org>.github.io/openkb-helm
+helm repo add openkb https://fireweave-hq.github.io/openkb-helm
 helm repo update
+helm search repo openkb --versions
 helm install openkb openkb/openkb \
   --namespace openkb \
   --create-namespace \
   -f values.yaml
 ```
 
-`<org>` is the GitHub owner of this repository. The release workflow uses `github.repository_owner`; it is not hardcoded here.
+Print the default values to start your own `values.yaml`:
+
+```bash
+helm show values openkb/openkb > values.yaml
+```
+
+The Pod still needs an image your cluster can pull. See [Prerequisites](#prerequisites).
 
 ## Install from a checkout
 
@@ -221,6 +245,32 @@ That lints the chart, renders the install scenarios, runs `helm unittest`, runs 
 ```bash
 make docker-build
 ```
+
+## FAQ
+
+### Is there an official OpenKB Helm chart?
+
+No. As of OpenKB `v0.5.0-rc1`, Vectify AI publishes the Python package on PyPI and the source on GitHub, but no Helm chart and no container image. This repository is a community chart that installs that PyPI release.
+
+### Is there an OpenKB Docker image?
+
+Not from upstream. [docker/Dockerfile](docker/Dockerfile) builds one from `openkb[web]==0.5.0rc1` and runs `openkb-web`. CI scans it with Trivy. You push it to your own registry.
+
+### Which OpenKB version does the chart deploy?
+
+`0.5.0rc1`, the first release that ships the REST API and Knowledge Workbench. The stable `v0.4.5` is CLI-only. See [Version](#version).
+
+### Which LLM providers work?
+
+Any provider LiteLLM supports, including OpenAI, Anthropic, Gemini, DeepSeek, and OpenAI-compatible gateways through `llm.openaiApiBase`. See [LLM providers](#llm-providers).
+
+### Can I run OpenKB without Kubernetes?
+
+Yes. Run the same image with `docker run`, as shown in [docs/image.md](docs/image.md#run-outside-kubernetes), or install `openkb[web]` from PyPI.
+
+### Where do I report bugs?
+
+Chart and image bugs go to [this repository's issues](https://github.com/FireWeave-HQ/openkb-helm/issues). Bugs in the OpenKB application go to [VectifyAI/OpenKB](https://github.com/VectifyAI/OpenKB/issues).
 
 ## Contributing
 
