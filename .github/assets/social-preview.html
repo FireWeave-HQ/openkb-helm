@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- Render to social-preview.png with:
+     chrome --headless --hide-scrollbars --window-size=1280,640 --screenshot=social-preview.png social-preview.html -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #0f1b3d 0%, #1d3a8a 100%);
+    color: #fff;
+    display: flex; align-items: center; gap: 56px; padding: 0 72px; box-sizing: border-box;
+  }
+  img { width: 220px; height: 220px; flex: none; box-shadow: 0 24px 64px rgba(0,0,0,.35); border-radius: 48px; }
+  h1 { font-size: 76px; white-space: nowrap; margin: 0 0 12px; letter-spacing: -2px; }
+  p { font-size: 32px; margin: 0 0 32px; color: #c9d8ff; line-height: 1.3; }
+  code {
+    display: inline-block; font: 21px/1.4 ui-monospace, Menlo, monospace;
+    background: rgba(0,0,0,.35); padding: 14px 22px; border-radius: 12px; color: #e8efff; white-space: nowrap;
+  }
+  .tag { font-size: 22px; color: #8fb4ff; margin-top: 28px; }
+</style>
+</head>
+<body>
+  <img src="icon.svg" alt="">
+  <div>
+    <h1>OpenKB Helm Chart</h1>
+    <p>Deploy the OpenKB REST API and<br>Knowledge Workbench on Kubernetes</p>
+    <code>helm repo add openkb https://fireweave-hq.github.io/openkb-helm</code>
+    <div class="tag">Community chart · Apache-2.0 · github.com/FireWeave-HQ/openkb-helm</div>
+  </div>
+</body>
+</html>
