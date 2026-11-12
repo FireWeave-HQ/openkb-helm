@@ -6,7 +6,7 @@
 # Build:
 #   docker build -f docker/Dockerfile -t openkb:0.5.0rc1 .
 
-FROM python:3.12-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 ARG OPENKB_VERSION=0.5.0rc1
 # Versions locked by upstream uv.lock at git tag v0.5.0-rc1.
